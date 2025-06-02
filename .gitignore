@@ -1,0 +1,42 @@
+# LangFlow Production - GitIgnore
+
+# Environment files z prawdziwymi credentials
+.env
+.env.local
+.env.production
+.env.staging
+
+# Logs
+*.log
+logs/
+langflow.log
+
+# Backup files
+*.sql
+*.tar.gz
+/backups/
+/tmp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker volumes (jeśli ktoś spróbuje commitować)
+volumes/
+data/
+
+# Temporary files
+*.tmp
+*.temp

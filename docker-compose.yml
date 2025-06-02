@@ -1,0 +1,95 @@
+version: "3.8"
+
+services:
+  langflow:
+    image: langflowai/langflow:latest
+    restart: unless-stopped
+    ports:
+      - "7860:7860"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database connection
+      - LANGFLOW_DATABASE_URL=postgresql://langflow:${POSTGRES_PASSWORD}@postgres:5432/langflow
+      # Configuration directory dla persistent storage
+      - LANGFLOW_CONFIG_DIR=/app/langflow
+      # Admin credentials (ZMIEŃ W COOLIFY!)
+      - LANGFLOW_SUPERUSER=${LANGFLOW_SUPERUSER:-admin}
+      - LANGFLOW_SUPERUSER_PASSWORD=${LANGFLOW_SUPERUSER_PASSWORD:-changeme123}
+      # Security
+      - LANGFLOW_SECRET_KEY=${LANGFLOW_SECRET_KEY:-your-secret-key-change-this-in-production}
+      # Performance optimizations dla Hetzner 8GB
+      - LANGFLOW_WORKERS=${LANGFLOW_WORKERS:-2}
+      - LANGFLOW_MAX_FILE_SIZE_UPLOAD=${LANGFLOW_MAX_FILE_SIZE_UPLOAD:-100}
+      # Logging
+      - LANGFLOW_LOG_LEVEL=${LANGFLOW_LOG_LEVEL:-INFO}
+      # Health check settings
+      - LANGFLOW_HEALTH_CHECK_MAX_RETRIES=3      # Optional: Langfuse integration (uncomment when needed)
+      # - LANGFLOW_LANGFUSE_SECRET_KEY=${LANGFLOW_LANGFUSE_SECRET_KEY}
+      # - LANGFLOW_LANGFUSE_PUBLIC_KEY=${LANGFLOW_LANGFUSE_PUBLIC_KEY}
+      # - LANGFLOW_LANGFUSE_HOST=${LANGFLOW_LANGFUSE_HOST}
+    volumes:
+      - langflow-data:/app/langflow
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # Resource limits zoptymalizowane dla serwera 8GB RAM
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.5"
+        reservations:
+          memory: 1G
+          cpus: "0.5"
+    labels:
+      - "coolify.managed=true"
+      - "coolify.version=1.0"
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: langflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-langflow_default_change_this}
+      POSTGRES_DB: langflow
+      # PostgreSQL optimizations
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - langflow-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langflow -d langflow"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Resource limits dla PostgreSQL
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        reservations:
+          memory: 256M
+          cpus: "0.2"
+    labels:
+      - "coolify.managed=true"
+volumes:
+  langflow-postgres:
+    driver: local
+    labels:
+      - "coolify.backup=true"  # Oznacz dla automatic backup
+  langflow-data:
+    driver: local
+    labels:
+      - "coolify.backup=true"
+
+# Coolify automatycznie zarządza siecią
+networks:
+  default:
+    name: langflow-network
+    labels:
+      - "coolify.managed=true"
